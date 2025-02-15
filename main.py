@@ -2,15 +2,9 @@ import streamlit as st
 import cv2
 import numpy as np
 from PIL import Image
-import os
-import base64
 from datetime import datetime
 from currency_features import CURRENCY_FEATURES, SECURITY_FEATURES
 from image_processor import process_image, analyze_features
-
-# Create storage directory if it doesn't exist
-if not os.path.exists("captured_images"):
-    os.makedirs("captured_images")
 
 st.set_page_config(
     page_title="Fake Currency Detector",
@@ -19,14 +13,10 @@ st.set_page_config(
 )
 
 def capture_image():
+    """ Capture image from camera without saving """
     img_file_buffer = st.camera_input("Take a picture")
     if img_file_buffer is not None:
-        # Save image to local storage
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        save_path = f"captured_images/currency_{timestamp}.jpg"
-        with open(save_path, "wb") as f:
-            f.write(img_file_buffer.getvalue())
-        return Image.open(img_file_buffer)
+        return Image.open(img_file_buffer)  # No saving, direct processing
     return None
 
 def main():
@@ -34,7 +24,7 @@ def main():
     st.markdown("""
     ### Instant Currency Note Verification
     Upload an image or capture a photo to verify currency authenticity.
-    For best results:
+    **For best results:**
     - Ensure good lighting
     - Capture the entire note clearly
     - Keep the note flat and well-aligned
@@ -67,16 +57,13 @@ def main():
 
         with col1:
             st.subheader("Currency Image")
-            st.image(image, use_container_width=True)
-
-            # Show reference features
+            st.image(image, use_column_width=True)
             st.markdown("### Expected Security Features")
             st.markdown(CURRENCY_FEATURES[denomination]['description'])
 
         with col2:
             st.subheader("Verification Process")
 
-            # Check button
             if st.button("🔍 Check Note", type="primary"):
                 try:
                     img_array = np.array(image)
@@ -88,21 +75,15 @@ def main():
 
                     # Display confidence meter
                     st.progress(total_confidence)
-                    st.metric(
-                        "Overall Authenticity Score", 
-                        f"{total_confidence * 100:.1f}%"
-                    )
+                    st.metric("Overall Authenticity Score", f"{total_confidence * 100:.1f}%")
 
-                    # Display final verdict first
+                    # Display final verdict
                     if total_confidence > 0.7:
                         st.success("✅ HIGH CONFIDENCE: Note appears to be genuine!")
-                        can_submit = True
                     elif total_confidence > 0.4:
                         st.warning("⚠️ MEDIUM CONFIDENCE: Some features need manual verification")
-                        can_submit = True
                     else:
                         st.error("❌ LOW CONFIDENCE: Note requires thorough verification!")
-                        can_submit = False
 
                     # Detailed feature analysis
                     st.markdown("### Detailed Analysis")
@@ -113,51 +94,14 @@ def main():
                             st.write(f"Confidence: {details['confidence']*100:.1f}%")
                             st.write(f"RBI Guideline: {SECURITY_FEATURES[feature.lower().replace(' ', '_')]['rbi_guidelines']}")
 
-                    # Submit button (only show if confidence is medium or high)
-                    if can_submit:
-                        if st.button("📥 Submit Verification", type="secondary"):
-                            # Save verification result
-                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                            verification_record = {
-                                'timestamp': timestamp,
-                                'denomination': denomination,
-                                'confidence': total_confidence,
-                                'features': features_found
-                            }
-                            st.success("✅ Verification submitted successfully!")
-                            st.balloons()
-
                 except Exception as e:
                     st.error(f"Error processing image: {str(e)}")
                     st.info("Please ensure the image is clear and properly lit.")
 
-    # Show recent scans in a collapsible section
-    if os.path.exists("captured_images") and os.listdir("captured_images"):
-        st.markdown("---")
-        with st.expander("Recent Scans"):
-            recent_files = sorted(
-                os.listdir("captured_images"),
-                key=lambda x: os.path.getctime(os.path.join("captured_images", x)),
-                reverse=True
-            )[:5]
-
-            cols = st.columns(len(recent_files))
-            for idx, file in enumerate(recent_files):
-                with cols[idx]:
-                    st.image(
-                        f"captured_images/{file}",
-                        caption=f"Scan {idx + 1}",
-                        use_container_width=True
-                    )
-
     # Educational section
     st.markdown("---")
     with st.expander("RBI Security Features Guide"):
-        st.markdown("""
-        ### Official Security Features
-        Learn about the key security features in different denominations:
-        """)
-
+        st.markdown("### Official Security Features")
         for denom, features in CURRENCY_FEATURES.items():
             st.markdown(f"#### ₹{denom} Note")
             st.write(features['description'])
