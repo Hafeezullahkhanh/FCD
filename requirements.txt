@@ -16,6 +16,8 @@ markupsafe==3.0.2
 mdurl==0.1.2
 narwhals==1.26.0
 numpy==2.2.3
+opencv-python==4.9.0.80  # Provides cv2
+opencv-python-headless==4.9.0.80  # Use this for server environments
 packaging==24.2
 pandas==2.2.3
 pillow==11.1.0
